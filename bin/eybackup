@@ -1,0 +1,59 @@
+#!/usr/bin/env ruby
+require 'rubygems'
+require 'yaml'
+require "optparse"
+require 'ey-backup/mysql_backup'
+
+options = {:config => '/etc/.mysql.backups.yml',
+           :command => :new_backup}
+
+# Build a parser for the command line arguments
+opts = OptionParser.new do |opts|
+  opts.version = "0.0.1"
+
+  opts.banner = "Usage: eybackup [-flag] [argument]"
+  opts.define_head "eybackup: backing up your shit since way back when..."
+  opts.separator '*'*80
+  
+  opts.on("-l", "--list-backups", "List mysql backups") do
+    options[:command] = :list
+  end
+  
+  opts.on("-n", "--new-backup", "Create new mysql backup") do
+    options[:command] = :new_backup
+  end
+  
+  opts.on("-c", "--config CONFIG", "Use config file.") do |config|
+    options[:config] = config
+  end
+  
+  opts.on("-d", "--download BACKUP_INDEX", "download the backup specified by index. RUn eybackup -l to get the index.") do |index|
+    options[:command] = :download
+    options[:index] = index
+  end
+  
+  opts.on("-r", "--restore BACKUP_INDEX", "Download and apply the backup specified by index WARNING! will overwrite the current db with the backup. Run eybackup -l to get the index.") do |index|
+    options[:command] = :restore
+    options[:index] = index
+  end
+
+end
+
+opts.parse!
+
+eyb = nil
+if File.exist?(options[:config])
+  eyb = EyBackup::MysqlBackup.new(YAML::load(IO.read(options[:config])))
+end
+
+case options[:command]
+when :list
+  eyb.list true
+when :new_backup
+  eyb.new_backup
+when :download
+  eyb.download(options[:index].to_i)
+when :restore
+  eyb.restore(options[:index].to_i)
+end
+eyb.cleanup

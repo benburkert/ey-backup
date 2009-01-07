@@ -1,0 +1,3 @@
+== ey-backup
+
+A gem that provides rolling tarball backups to s3.
