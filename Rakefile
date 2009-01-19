@@ -5,11 +5,11 @@ require 'date'
 require 'spec/rake/spectask'
 
 GEM = "ey-backup"
-GEM_VERSION = "0.0.1"
-AUTHOR = "Your Name"
-EMAIL = "Your Email"
+GEM_VERSION = "0.0.3"
+AUTHOR = "Ezra Zygmuntowicz"
+EMAIL = "ezra@engineyard.com"
 HOMEPAGE = "http://example.com"
-SUMMARY = "A gem that provides..."
+SUMMARY = "A gem that provides s3 backups for ey-solo slices..."
 
 spec = Gem::Specification.new do |s|
   s.name = GEM

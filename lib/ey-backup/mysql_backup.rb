@@ -30,9 +30,10 @@ module EyBackup
         )
       @dbuser = opts[:dbuser]
       @dbpass = opts[:dbpass]
+      @databases = opts[:databases]
       @keep = opts[:keep]
       @bucket = "ey-backup-#{Digest::SHA1.hexdigest(opts[:aws_secret_id])[0..11]}"
-      @tmpname = "db.#{Date.today.to_s}.#{Time.now.to_i}.sql.gz"
+      @tmpname = "#{Time.now.strftime("%Y-%m-%dT%H:%M:%S").gsub(/:/, '-')}.sql.gz"
       @id = EyBackup.get_from_ec2('/instance-id')
       FileUtils.mkdir_p '/mnt/tmp'
       begin
@@ -42,23 +43,30 @@ module EyBackup
     end
     
     def new_backup
-      mysqlcmd = "mysqldump -u #{@dbuser} -p'#{@dbpass}' --all-databases | gzip - > /mnt/tmp/#{@tmpname}"
+      @databases.each do |db|
+        backup_database(db)
+      end  
+    end
+    
+    def backup_database(database)
+      mysqlcmd = "mysqldump -u #{@dbuser} -p'#{@dbpass}' #{database} | gzip - > /mnt/tmp/#{database}.#{@tmpname}"
       if system(mysqlcmd)
         AWS::S3::S3Object.store(
-           "/#{@id}/#{@tmpname}",
-           open("/mnt/tmp/#{@tmpname}"),
+           "/#{@id}.#{database}/#{database}.#{@tmpname}",
+           open("/mnt/tmp/#{database}.#{@tmpname}"),
            @bucket,
            :access => :private
         )
-        FileUtils.rm "/mnt/tmp/#{@tmpname}"
-        puts "successful backup: #{@tmpname}"
+        FileUtils.rm "/mnt/tmp/#{database}.#{@tmpname}"
+        puts "successful backup: #{database}.#{@tmpname}"
       else
-        raise "Unable to dump databases wtf?"
-      end    
+        raise "Unable to dump database#{database} wtf?"
+      end
     end
     
     def download(index)
-      obj =  list[index]
+      idx, db = index.split(":")
+      obj =  list(db)[idx.to_i]
       puts "downloading: #{normalize_name(obj)}"
       File.open(normalize_name(obj), 'wb') do |f|
         print "."
@@ -71,7 +79,8 @@ module EyBackup
     
     def restore(index)
       name = download(index)
-      cmd = "gunzip -c #{name} | mysql -u #{@dbuser} -p'#{@dbpass}'"
+      db = name.split('.').first
+      cmd = "gunzip -c #{name} | mysql -u #{@dbuser} -p'#{@dbpass}' #{db}"
       if system(cmd)
         puts "successfully restored backup: #{name}"
       else
@@ -80,21 +89,30 @@ module EyBackup
     end
     
     def cleanup
-      list[0...-@keep].each{|o| 
+      list('all',false)[0...-(@keep*@databases.size)].each{|o| 
         puts "deleting: #{o.key}"  
         o.delete
       }
     end
     
     def normalize_name(obj)
-      obj.key.gsub("#{@id}/", '')
+      obj.key.gsub(/^.*?\//, '')
     end
     
-    def list(print = false)
-      backups = AWS::S3::Bucket.objects(@bucket, :prefix => @id).sort
-      if print
+    def list(database='all', printer = false)
+      puts "listing #{database} database" if printer
+      backups = []
+      if database == 'all'
+        @databases.each do |db|
+          backups << AWS::S3::Bucket.objects(@bucket, :prefix => "#{@id}.#{db}")
+        end
+        backups = backups.flatten.sort
+      else  
+        backups = AWS::S3::Bucket.objects(@bucket, :prefix => "#{@id}.#{database}").sort
+      end
+      if printer
         backups.each_with_index do |b,i|
-          puts "index: #{i} #{normalize_name(b)}"
+          puts "#{i}:#{database} #{normalize_name(b)}"
         end
       end    
       backups

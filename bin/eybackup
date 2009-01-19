@@ -15,7 +15,8 @@ opts = OptionParser.new do |opts|
   opts.define_head "eybackup: backing up your shit since way back when..."
   opts.separator '*'*80
   
-  opts.on("-l", "--list-backups", "List mysql backups") do
+  opts.on("-l", "--list-backup DATABASE", "List mysql backups for DATABASE") do |db|
+    options[:db] = (db || 'all')
     options[:command] = :list
   end
   
@@ -27,7 +28,7 @@ opts = OptionParser.new do |opts|
     options[:config] = config
   end
   
-  opts.on("-d", "--download BACKUP_INDEX", "download the backup specified by index. RUn eybackup -l to get the index.") do |index|
+  opts.on("-d", "--download BACKUP_INDEX", "download the backup specified by index. Run eybackup -l to get the index.") do |index|
     options[:command] = :download
     options[:index] = index
   end
@@ -48,12 +49,12 @@ end
 
 case options[:command]
 when :list
-  eyb.list true
+  eyb.list options[:db], true
 when :new_backup
   eyb.new_backup
 when :download
-  eyb.download(options[:index].to_i)
+  eyb.download(options[:index])
 when :restore
-  eyb.restore(options[:index].to_i)
+  eyb.restore(options[:index])
 end
 eyb.cleanup
