@@ -3,6 +3,7 @@ require 'rubygems'
 require 'yaml'
 require "optparse"
 require 'ey-backup/mysql_backup'
+require 'ey-backup/postgresql_backup'
 
 options = {:config => '/etc/.mysql.backups.yml',
            :command => :new_backup}
@@ -32,7 +33,11 @@ opts = OptionParser.new do |opts|
     options[:command] = :download
     options[:index] = index
   end
-  
+
+  opts.on("-e", "--engine DATABASE_ENGINE", "The database engine. ex: mysql, postgres.") do |engine|
+    options[:engine] = engine || 'mysql'
+  end
+
   opts.on("-r", "--restore BACKUP_INDEX", "Download and apply the backup specified by index WARNING! will overwrite the current db with the backup. Run eybackup -l to get the index.") do |index|
     options[:command] = :restore
     options[:index] = index
@@ -44,7 +49,11 @@ opts.parse!
 
 eyb = nil
 if File.exist?(options[:config])
-  eyb = EyBackup::MysqlBackup.new(YAML::load(IO.read(options[:config])))
+  eyb = case options[:engine]
+    when 'postgres'         then EyBackup::PostgresqlBackup.new(YAML::load(IO.read(options[:config])))
+    when 'mysql', NilClass  then EyBackup::MysqlBackup.new(YAML::load(IO.read(options[:config])))
+    else raise "Invalid engine: #{options[:engine]}"
+    end
 end
 
 case options[:command]
