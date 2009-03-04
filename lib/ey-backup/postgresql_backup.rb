@@ -1,7 +1,7 @@
 module EyBackup
   class PostgresqlBackup < MysqlBackup
     def backup_database(database)
-      posgrecmd = "pg_dump --clean --no-owner --no-privileges -U#{@dbuser} -W'#{@dbpass}' #{database} | gzip - > /mnt/tmp/#{database}.#{@tmpname}"
+      posgrecmd = "PGPASSWORD='#{@dbpass}' pg_dump --clean --no-owner --no-privileges -U#{@dbuser} #{database} | gzip - > /mnt/tmp/#{database}.#{@tmpname}"
       if system(posgrecmd)
         AWS::S3::S3Object.store(
            "/#{@id}.#{database}/#{database}.#{@tmpname}",
@@ -19,7 +19,7 @@ module EyBackup
     def restore(index)
       name = download(index)
       db = name.split('.').first
-      cmd = "gunzip -c #{name} | psql -U#{@dbuser} -W'#{@dbpass}' #{db}"
+      cmd = "gunzip -c #{name} | PGPASSWORD='#{@dbpass}' psql -U#{@dbuser} #{db}"
       if system(cmd)
         puts "successfully restored backup: #{name}"
       else
