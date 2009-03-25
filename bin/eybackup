@@ -34,9 +34,13 @@ opts = OptionParser.new do |opts|
     options[:index] = index
   end
 
-  opts.on("-e", "--engine DATABASE_ENGINE", "The database engine. ex: mysql, postgres.") do |engine|
-    options[:engine] = engine || 'mysql'
-    options[:config] ||= '/etc/.#{options[:engine]}.backups.yml'
+  opts.on("-e", "--engine DATABASE_ENGINE", "The database engine. ex: mysql, postgresql.") do |engine|
+    options[:engine] = engine || case
+      when File.exists?('/etc/.mysql.backups.yml')      then 'mysql'
+      when File.exists?('/etc/.postgresql.backups.yml') then 'postgresql'
+      end
+
+    options[:config] ||= "/etc/.#{options[:engine]}.backups.yml"
   end
 
   opts.on("-r", "--restore BACKUP_INDEX", "Download and apply the backup specified by index WARNING! will overwrite the current db with the backup. Run eybackup -l to get the index.") do |index|
@@ -51,8 +55,8 @@ opts.parse!
 eyb = nil
 if File.exist?(options[:config])
   eyb = case options[:engine]
-    when 'postgres'         then EyBackup::PostgresqlBackup.new(YAML::load(IO.read(options[:config])))
-    when 'mysql', NilClass  then EyBackup::MysqlBackup.new(YAML::load(IO.read(options[:config])))
+    when 'postgresql', 'postgres' then EyBackup::PostgresqlBackup.new(YAML::load(IO.read(options[:config])))
+    when 'mysql', NilClass        then EyBackup::MysqlBackup.new(YAML::load(IO.read(options[:config])))
     else raise "Invalid engine: #{options[:engine]}"
     end
 end
