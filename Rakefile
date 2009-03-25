@@ -5,7 +5,7 @@ require 'date'
 require 'spec/rake/spectask'
 
 GEM = "ey-backup"
-GEM_VERSION = "0.0.3.1"
+GEM_VERSION = "0.0.3.2"
 AUTHOR = "Ezra Zygmuntowicz"
 EMAIL = "ezra@engineyard.com"
 HOMEPAGE = "http://example.com"
