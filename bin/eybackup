@@ -5,8 +5,7 @@ require "optparse"
 require 'ey-backup/mysql_backup'
 require 'ey-backup/postgresql_backup'
 
-options = {:config => '/etc/.mysql.backups.yml',
-           :command => :new_backup}
+options = {:command => :new_backup}
 
 options[:config] = '/etc/.postgresql.backups.yml' if File.exists?('/etc/.postgresql.backups.yml')
 
@@ -53,6 +52,13 @@ opts = OptionParser.new do |opts|
 end
 
 opts.parse!
+
+options[:config] ||= (File.exists?('/etc/.postgresql.backups.yml') ? '/etc/.postgresql.backups.yml' : '/etc/.mysql.backups.yml')
+
+options[:engine] ||= case
+  when File.exists?('/etc/.mysql.backups.yml')      then 'mysql'
+  when File.exists?('/etc/.postgresql.backups.yml') then 'postgresql'
+  end
 
 eyb = nil
 if File.exist?(options[:config])
