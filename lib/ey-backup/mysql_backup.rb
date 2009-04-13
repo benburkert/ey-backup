@@ -104,7 +104,7 @@ module EyBackup
       backups = []
       if database == 'all'
         @databases.each do |db|
-          backups << AWS::S3::Bucket.objects(@bucket, :prefix => "#{@id}.#{db}")
+          backups << AWS::S3::Bucket.objects(@bucket)
         end
         backups = backups.flatten.sort
       else  
